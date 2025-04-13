@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📱 Product Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #f2f4f8, #e0eafc);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      h1 {
+        color: #333;
+        margin-top: 30px;
+        margin-bottom: 10px;
+      }
+
+      .scanner-container {
+        background: white;
+        padding: 20px;
+        border-radius: 20px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+      }
+
+      video {
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #prediction {
+        font-size: 18px;
+        margin-top: 20px;
+        font-weight: 500;
+        color: #444;
+      }
+
+      #productImage {
+        margin-top: 20px;
+        max-width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        display: none;
+      }
+
+      @media (max-width: 480px) {
+        h1 {
+          font-size: 24px;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📷 Scan Your Product</h1>
+
+    <div class="scanner-container">
+      <video id="webcam" autoplay playsinline muted></video>
+      <button onclick="predict()">Scan Now</button>
+      <div id="prediction"></div>
+      <img id="productImage" />
+    </div>
+
+    <script>
+      let model;
+      const labels = {
+        "Vivo Z1 Pro": "/static/images/vivo.jpg",
+        "No Phone Detected": "/",
+        // "Samsung Galaxy A52": "/static/images/samsung.jpg"
+      };
+
+      async function init() {
+        model = await tf.loadLayersModel("/static/model/model.json");
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        document.getElementById("webcam").srcObject = stream;
+      }
+
+      async function predict() {
+        const video = document.getElementById("webcam");
+        const tensor = tf.browser
+          .fromPixels(video)
+          .resizeNearestNeighbor([224, 224])
+          .toFloat()
+          .div(255.0)
+          .expandDims();
+
+        const predictions = await model.predict(tensor).data();
+        const maxIndex = predictions.indexOf(Math.max(...predictions));
+        const classNames = Object.keys(labels);
+        const predictedLabel = classNames[maxIndex];
+
+        const predictionText = document.getElementById("prediction");
+        const productImg = document.getElementById("productImage");
+
+        predictionText.innerText = `✅ Detected: ${predictedLabel}`;
+
+        if (predictedLabel === "No Phone Detected") {
+          productImg.style.display = "none";
+        } else {
+          productImg.src = labels[predictedLabel];
+          productImg.style.display = "block";
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
